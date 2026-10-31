@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+env/
+*.so
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Project outputs
+results/*.jsonl
+results/*.csv
+results/*.png
+results/_tmp_out.txt
+results/_learn_probe.log
+runs/
+wandb/
+checkpoints/
+*.pt
+*.pth
+*.ckpt
+
+# Papers (keep the PDFs locally, do not redistribute)
+papers/*.pdf
+
+# Local notes
+*.local.md
+.workbuddy/memory/

@@ -1,0 +1,35 @@
+# Sparse linear regression: the task where the looped model beats both the
+# 12-layer transformer and Lasso (Fig. 10a). Paper: b=20, T=10, d=20, s=3, k=100.
+run_name: looped_sparse_linear
+seed: 0
+device: auto
+
+task:
+  name: sparse_linear
+  d: 20
+  s: 3
+
+model:
+  looped: true
+  n_layer: 1
+  n_head: 8
+  n_embd: 256
+  dropout: 0.0
+
+train:
+  steps: 20000
+  batch_size: 64
+  lr: 1.0e-4
+  k_max: 100
+  curriculum_k: true
+  n_loops: 20
+  loss_window: 10
+  schedule_b: true
+  b_start: 1
+  eval_every: 2000
+  grad_clip: 1.0e9
+
+eval:
+  batch_size: 512
+  k: 100
+  iterations: [1, 2, 5, 10, 20, 40, 60, 80]

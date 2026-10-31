@@ -1,0 +1,32 @@
+# Baseline: standard (unlooped) 12-layer transformer, same embeddings/readout.
+run_name: standard_linear
+seed: 0
+device: auto
+
+task:
+  name: linear
+  d: 20
+
+model:
+  looped: false
+  n_layer: 12
+  n_head: 8
+  n_embd: 256
+  dropout: 0.0
+
+train:
+  steps: 20000
+  batch_size: 64
+  lr: 1.0e-4
+  k_max: 40
+  curriculum_k: true
+  n_loops: 1         # unused when looped=false
+  loss_window: 15
+  schedule_b: false
+  eval_every: 2000
+  grad_clip: 1.0e9
+
+eval:
+  batch_size: 512
+  k: 40
+  iterations: [1]

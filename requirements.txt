@@ -1,0 +1,12 @@
+# Core
+torch>=2.1
+numpy>=1.24
+
+# Configs / CLI
+PyYAML>=6.0
+
+# Experiments
+matplotlib>=3.7
+
+# Tests
+pytest>=7.4

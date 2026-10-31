@@ -1,0 +1,35 @@
+# Paper setting for the looped transformer on linear regression (Sec. 4-5.2).
+# b=20, T=15, L=1, D=256, h=8 -> 0.79M params vs 9.48M for the 12-layer baseline.
+# Expect several hours on CPU; use a GPU (--device cuda) for the full run.
+run_name: looped_linear
+seed: 0
+device: auto
+
+task:
+  name: linear
+  d: 20
+
+model:
+  looped: true
+  n_layer: 1
+  n_head: 8
+  n_embd: 256
+  dropout: 0.0
+
+train:
+  steps: 20000
+  batch_size: 64
+  lr: 1.0e-4
+  k_max: 40
+  curriculum_k: true
+  n_loops: 20
+  loss_window: 15
+  schedule_b: true
+  b_start: 1
+  eval_every: 2000
+  grad_clip: 1.0e9
+
+eval:
+  batch_size: 512
+  k: 40
+  iterations: [1, 2, 5, 10, 20, 40, 80, 100]
