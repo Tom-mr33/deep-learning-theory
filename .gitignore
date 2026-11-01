@@ -33,3 +33,4 @@ papers/*.pdf
 # Local notes
 *.local.md
 .workbuddy/memory/
+results/*.log
