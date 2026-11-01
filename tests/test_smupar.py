@@ -28,7 +28,11 @@ def test_lr_rules():
     assert math.isclose(hidden_lr(base_lr, s, "sp"), base_lr)
     assert math.isclose(hidden_lr(base_lr, s, "mup"), base_lr / 2.0)
     assert math.isclose(hidden_lr(base_lr, s, "supar"), base_lr / 1.0)
-    # SGD only needs the density correction (App. D.3.1)
+    # SGD only needs the density correction (App. D.3.1): 1/d_in is already
+    # inside the SGD update, so muP (m_rho=1) keeps eta_base at any width.
+    s = SparseScaling(width_mult=4.0, density_mult=0.5)
+    assert math.isclose(hidden_lr(base_lr, s, "mup", optimizer="sgd"), base_lr)
+    assert math.isclose(hidden_lr(base_lr, s, "supar", optimizer="sgd"), base_lr / 0.5)
     assert math.isclose(
         hidden_lr(base_lr, SparseScaling(1.0, 0.5), "supar", optimizer="sgd"), base_lr / 0.5
     )
@@ -61,7 +65,7 @@ def test_sp_activations_shrink_with_sparsity():
             d, 512, density=rho, param=Parameterization.SP,
             scaling=SparseScaling.from_dims(d, rho), base_init_std=0.02,
         )
-        variances.append(float(layer(x).var()))
+        variances.append(float(layer(x).detach().var()))
     assert variances[0] > variances[1] > variances[2]
 
 

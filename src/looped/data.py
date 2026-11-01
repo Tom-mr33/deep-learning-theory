@@ -53,7 +53,7 @@ class SparseLinearFunction(LinearFunction):
         self.s = s
 
     def sample_weights(self, batch: int) -> Tensor:
-        w = torch.zeros(batch, self.d, generator=self.g, device=self.device)
+        w = torch.zeros(batch, self.d, device=self.device)
         for b in range(batch):
             idx = torch.randperm(self.d, generator=self.g, device=self.device)[: self.s]
             w[b, idx] = torch.randn(self.s, generator=self.g, device=self.device)

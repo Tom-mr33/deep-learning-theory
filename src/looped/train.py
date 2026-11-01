@@ -33,6 +33,11 @@ def windowed_loss(
     b: int,
 ) -> torch.Tensor:
     """Average squared error over loop iterations ``b0..b-1`` (0-indexed)."""
+    if not 0 <= b0 < b <= len(preds):
+        raise ValueError(
+            f"invalid loss window: b0={b0}, b={b}, n_predictions={len(preds)}; "
+            f"require 0 <= b0 < b <= len(preds)"
+        )
     total = label.new_zeros(())
     count = 0
     for t in range(b0, b):
@@ -45,9 +50,13 @@ def windowed_loss(
 def current_b(step: int, cfg: Dict) -> int:
     """Loop-iteration schedule: linear ramp from ``b_start`` to ``n_loops``."""
     b_max = int(cfg["n_loops"])
+    if b_max < 1:
+        raise ValueError(f"n_loops must be >= 1, got {b_max}")
     if not cfg.get("schedule_b", False):
         return b_max
     b_start = int(cfg.get("b_start", 1))
+    if b_start < 1:
+        raise ValueError(f"b_start must be >= 1, got {b_start}")
     warmup = int(cfg.get("b_warmup_steps", max(cfg["steps"] // 2, 1)))
     frac = min(1.0, step / max(warmup, 1))
     return int(round(b_start + frac * (b_max - b_start)))
@@ -145,6 +154,15 @@ def train(cfg: Dict, verbose: bool = True) -> Dict:
     eval_every = int(tcfg.get("eval_every", 0))
     curriculum_k = bool(tcfg.get("curriculum_k", True))
     iterations = [int(i) for i in ecfg.get("iterations", [tcfg["n_loops"]])]
+
+    for name, value in [("steps", steps), ("batch_size", batch_size),
+                        ("loss_window", T), ("k_max", k_max)]:
+        if value < 1:
+            raise ValueError(f"train.{name} must be >= 1, got {value}")
+    if any(i < 1 for i in iterations):
+        raise ValueError(f"eval.iterations must all be >= 1, got {iterations}")
+    if int(tcfg["n_loops"]) < 1:
+        raise ValueError(f"train.n_loops must be >= 1, got {tcfg['n_loops']}")
     log_path = results_dir(cfg.get("results_dir", "results")) / f"{cfg.get('run_name', 'run')}.jsonl"
 
     t0 = time.time()
@@ -153,9 +171,11 @@ def train(cfg: Dict, verbose: bool = True) -> Dict:
         k = int(torch.randint(1, k_max + 1, (1,)).item()) if curriculum_k else k_max
         batch = {key: v.to(device) for key, v in task.sample(batch_size, k).items()}
 
-        b = current_b(step, {**tcfg, "steps": steps})
+        b = current_b(step, {**tcfg, "steps": steps}) if model.looped else 1
         b0 = max(b - T, 0)
-        preds = model(batch["x_seq"], batch["y_seq"], n_loops=b, return_all=True)
+        # truncated BPTT: only the window [b0, b) carries gradients
+        preds = model(batch["x_seq"], batch["y_seq"], n_loops=b, return_all=True,
+                      detach_before=b0 if model.looped else 0)
         loss = windowed_loss(preds, batch["label"], batch["mask"], b0, b)
 
         opt.zero_grad(set_to_none=True)

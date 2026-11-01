@@ -105,8 +105,18 @@ def run_one(cfg: ProbeConfig, density: float, param: Parameterization) -> List[D
     scaling = SparseScaling.from_dims(cfg.d_model, density)
     lr = hidden_lr(cfg.base_lr, scaling, param, optimizer="adam")
 
+    # SµPar/µP scaling applies to *hidden sparse* weights only; the dense output
+    # head keeps the base learning rate (otherwise the head becomes a confounder).
+    hidden_params = [p for n, p in model.named_parameters() if not n.startswith("head.")]
+    head_params = [p for n, p in model.named_parameters() if n.startswith("head.")]
     params = [p for p in model.parameters() if p.requires_grad]
-    opt = torch.optim.AdamW(params, lr=lr, weight_decay=0.0)
+    opt = torch.optim.AdamW(
+        [
+            {"params": hidden_params, "lr": lr},
+            {"params": head_params, "lr": cfg.base_lr},
+        ],
+        weight_decay=0.0,
+    )
     g = torch.Generator(device=cfg.device)
     g.manual_seed(cfg.seed + 2)
 

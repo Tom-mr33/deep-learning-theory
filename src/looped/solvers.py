@@ -17,14 +17,22 @@ def ols_predict(x_ctx: torch.Tensor, y_ctx: torch.Tensor, x_q: torch.Tensor,
 
     Returns:
         ``[B]`` predictions at the query points.
+
+    Notes:
+        With ``ridge=0`` and ``k < d`` the normal equations are singular; the
+        minimum-norm least-squares solution (``torch.linalg.lstsq``) is used
+        there.  Pass a small positive ``ridge`` for the ridge solution.
     """
     B, k, d = x_ctx.shape
-    xtx = torch.einsum("bki,bkj->bij", x_ctx, x_ctx)
     if ridge > 0:
+        xtx = torch.einsum("bki,bkj->bij", x_ctx, x_ctx)
         xtx = xtx + ridge * torch.eye(d, device=x_ctx.device).unsqueeze(0)
-    xty = torch.einsum("bki,bk->bi", x_ctx, y_ctx)
-    # solve is faster / more stable than an explicit inverse
-    w = torch.linalg.solve(xtx, xty.unsqueeze(-1)).squeeze(-1)
+        xty = torch.einsum("bki,bk->bi", x_ctx, y_ctx)
+        # solve is faster / more stable than an explicit inverse
+        w = torch.linalg.solve(xtx, xty.unsqueeze(-1)).squeeze(-1)
+    else:
+        # handles both k >= d (least squares) and k < d (minimum norm)
+        w = torch.linalg.lstsq(x_ctx, y_ctx.unsqueeze(-1)).solution.squeeze(-1)
     return torch.einsum("bd,bd->b", x_q, w)
 
 

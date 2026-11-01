@@ -109,8 +109,10 @@ E[ΔY_ij] → η · m_din · d_in,base · m_ρ · ρ_base · E[ X · (Σ_t γ_t 
 | 参数化 | 隐藏层 init 方差 | 隐藏层 LR (Adam) | 隐藏层 LR (SGD) |
 |---|---|---|---|
 | SP | `σ_base²` | `η_base` | `η_base` |
-| μP | `σ_base² / m_d` | `η_base / m_d` | `η_base / m_d` |
+| μP | `σ_base² / m_d` | `η_base / m_d` | `η_base` |
 | **SµPar** | `σ_base² / (m_d m_ρ)` | `η_base / (m_d m_ρ)` | `η_base / m_ρ` |
+
+> 注（SGD 列）：论文 App. D.3.1 明确写 SGD 的修正 `η = η_base / m_ρ`，且 "equivalent to μP when ρ=1" —— 即 μP 下 SGD 学习率**不随宽度缩放**（`1/d_in` 已藏在 ΔW 的定义里，式 18）。本项目代码按此实现（`scaling.py::sgd_lr_factor`），与 Yang et al. 2021 原始 μP 论文的 SGD 约定需另行核对。
 
 嵌入/解嵌入/LayerNorm/bias/attn logits：**三者相同**（按 μP 处理），因为论文只稀疏化投影层。
 

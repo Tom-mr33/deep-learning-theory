@@ -158,6 +158,7 @@ class InContextTransformer(nn.Module):
         y_seq: torch.Tensor,
         n_loops: int = 1,
         return_all: bool = False,
+        detach_before: int = 0,
     ):
         """Run the model and return a prediction per loop iteration.
 
@@ -166,11 +167,22 @@ class InContextTransformer(nn.Module):
             y_seq: ``[B, T]`` labels, zero-filled at input positions.
             n_loops: number of loop iterations (ignored when ``looped=False``).
             return_all: if True return the list of per-iteration predictions.
+            detach_before: run this many initial loop iterations without building
+                an autograd graph, then detach the state.  This implements
+                truncated backpropagation through time for the paper's loss
+                window ``[b-T, b]`` while keeping the returned list aligned.
 
         Returns:
             ``[B, T, 1]`` prediction of the last iteration, or the full list.
         """
         B, T, _ = x_seq.shape
+        if n_loops < 1:
+            raise ValueError(f"n_loops must be >= 1, got {n_loops}")
+        if not 0 <= detach_before < n_loops:
+            raise ValueError(
+                f"detach_before must satisfy 0 <= detach_before < n_loops, "
+                f"got {detach_before} with n_loops={n_loops}"
+            )
         if T > self.max_seq:
             raise ValueError(f"sequence length {T} exceeds max_seq {self.max_seq}")
 
@@ -179,13 +191,19 @@ class InContextTransformer(nn.Module):
 
         preds: List[torch.Tensor] = []
         if not self.looped:
+            if detach_before:
+                raise ValueError("detach_before only applies to looped models")
             h = self.body(P)
             preds.append(self.readout(self.ln_f(h)))
         else:
             y = torch.zeros_like(P)
-            for _ in range(max(1, n_loops)):
-                y = self.body(y + P)          # Y_{t+1} = M(Y_t + P)
-                preds.append(self.readout(self.ln_f(y)))
+            for t in range(1, n_loops + 1):
+                in_window = t > detach_before
+                with torch.set_grad_enabled(in_window):
+                    if t == detach_before + 1:
+                        y = y.detach()            # truncated BPTT boundary
+                    y = self.body(y + P)          # Y_{t+1} = M(Y_t + P)
+                    preds.append(self.readout(self.ln_f(y)))
 
         return preds if return_all else preds[-1]
 

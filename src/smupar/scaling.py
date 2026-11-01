@@ -81,12 +81,16 @@ class SparseScaling:
         return 1.0 / (self.width_mult * self.density_mult)
 
     def sgd_lr_factor(self, param: "str | Parameterization") -> float:
+        # App. D.3.1: SGD's update already carries a 1/d_in normalisation, so the
+        # update term is width-invariant -- only the density needs correcting.
+        # For muP (m_rho = 1) this reduces to eta_base, matching the paper's note
+        # that the SGD correction "is equivalent to muP when rho = 1".
         p = Parameterization.parse(param)
         if p is Parameterization.SP:
             return 1.0
         if p is Parameterization.MUP:
-            return 1.0 / self.width_mult
-        return 1.0 / (self.width_mult * self.density_mult)
+            return 1.0
+        return 1.0 / self.density_mult
 
 
 def hidden_init_std(

@@ -20,7 +20,7 @@ src/smupar/                 SµPar：scaling(缩放律) layers(稀疏线性层) 
 src/common/                 配置/日志/随机种子等公共工具
 configs/                    实验配置（debug / smoke / paper 设置）
 scripts/                    CLI 入口
-tests/                      单元测试（12 项，含 SµPar 方差不变性的数值验证）
+tests/                      单元测试（18 项，含 SµPar 方差不变性与截断 BPTT 的数值验证）
 papers/                     PDF（不入库，见 .gitignore）
 results/                    训练日志 jsonl + 汇总 json + 探针图（部分不入库）
 ```
@@ -53,7 +53,7 @@ python scripts/run_supar_probe.py --steps 200 --d-model 256
 |------|------|
 | 数据管线（linear / sparse linear / decision tree / 2-layer NN）、前缀一次前向算 k+1 个训练信号 | ✅ 已验证（单批次过拟合 err≈5e-3） |
 | 循环架构 `Y_{t+1}=M(Y_t+P)`、参数共享、有效深度、逐迭代输出 | ✅ 已验证（参数量 <15% 于 12 层） |
-| 窗口截断损失 `[b-T, b]` + b 调度 | ✅ 已实现，公式对齐 Eq.1 |
+| 窗口截断损失 `[b-T, b]` + b 调度 | ✅ 已实现（`detach_before` 真正截断反传图，测试验证窗口外迭代无梯度） |
 | **端到端小规模复现**（`configs/looped_linear_smoke.yaml`，30 s）：算法被学到 + 超过 b 后退化 | ✅ 实测 b=3 → 0.067；b=6 → 0.12；b=12 → 0.26；OLS 1.6e-12 |
 | 论文规模数字（Fig.2 / Fig.10 / Table 2） | ⏳ 未跑（需 GPU，配置已就绪；d=20/k=40 需要 1e4–1e5 步） |
 | SµPar 缩放律（init / Adam LR / SGD LR） | ✅ 数值验证：density 从 1 → 1/16，激活方差漂移 <15% |
