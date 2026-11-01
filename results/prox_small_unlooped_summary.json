@@ -1,0 +1,18 @@
+{
+  "run_name": "prox_small_unlooped",
+  "task": "linear",
+  "looped": false,
+  "n_layer": 8,
+  "params": 401792,
+  "steps": 6000,
+  "k_eval": 10,
+  "final": {
+    "1": {
+      "err": 1.0024638335635343
+    },
+    "ols": {
+      "err": 2.0029327488084211e-13
+    }
+  },
+  "wall_time_s": 955.7
+}

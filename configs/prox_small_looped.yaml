@@ -1,0 +1,35 @@
+# Decisive small-scale comparison: looped (b=8) vs 8-layer standard model.
+# d=5/k=10/D=64 is the smallest setting where in-context learning visibly
+# takes off within ~6k steps (verified in exploratory runs). Paper-scale
+# (d=20/k=40/D=256) needs 1e4-1e5 steps -- see docs/comparison_with_paper.md.
+run_name: prox_small_looped
+seed: 0
+device: auto
+
+task:
+  name: linear
+  d: 5
+
+model:
+  looped: true
+  n_layer: 1
+  n_head: 4
+  n_embd: 64
+  dropout: 0.0
+
+train:
+  steps: 6000
+  batch_size: 64
+  lr: 1.0e-3
+  k_max: 10
+  curriculum_k: false
+  n_loops: 8
+  loss_window: 4
+  schedule_b: false
+  eval_every: 2000
+  grad_clip: 1.0e9
+
+eval:
+  batch_size: 512
+  k: 10
+  iterations: [1, 2, 4, 8, 16, 32, 64]

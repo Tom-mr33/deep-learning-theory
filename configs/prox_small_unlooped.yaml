@@ -1,0 +1,32 @@
+# Baseline for prox_small_looped.yaml: 8-layer standard transformer.
+run_name: prox_small_unlooped
+seed: 0
+device: auto
+
+task:
+  name: linear
+  d: 5
+
+model:
+  looped: false
+  n_layer: 8
+  n_head: 4
+  n_embd: 64
+  dropout: 0.0
+
+train:
+  steps: 6000
+  batch_size: 64
+  lr: 1.0e-3
+  k_max: 10
+  curriculum_k: false
+  n_loops: 1
+  loss_window: 4
+  schedule_b: false
+  eval_every: 2000
+  grad_clip: 1.0e9
+
+eval:
+  batch_size: 512
+  k: 10
+  iterations: [1]

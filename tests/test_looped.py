@@ -5,7 +5,7 @@ import torch
 from src.looped.data import make_task
 from src.looped.model import InContextTransformer
 from src.looped.solvers import normalized_squared_error, ols_predict
-from src.looped.train import train, windowed_loss
+from src.looped.train import evaluate, train, windowed_loss
 
 
 def test_all_task_factories_produce_valid_prompts():
@@ -138,6 +138,20 @@ def test_unlooped_training_ignores_loop_schedule(tmp_path):
     result = train(cfg, verbose=False)
     assert result["steps"] == 1
     assert "1" in result["final"]
+
+
+def test_evaluate_is_chunk_size_invariant():
+    """Chunked evaluation must give identical numbers to a single big batch."""
+    model = InContextTransformer(d=8, max_seq=21, n_layer=1, n_head=2, n_embd=16, looped=True)
+    # two identically-seeded tasks so both calls see the same prompts
+    task_a = make_task("linear", d=8, seed=7)
+    task_b = make_task("linear", d=8, seed=7)
+    big = evaluate(model, task_a, k=10, iterations=[1, 3], batch_size=8, chunk_size=8)
+    small = evaluate(model, task_b, k=10, iterations=[1, 3], batch_size=8, chunk_size=3)
+    for key in big:
+        # float32 accumulation order differs across chunk sizes; 1e-6 is tight
+        # enough to catch real bugs (a wrong slice gives O(1) differences)
+        assert abs(big[key]["err"] - small[key]["err"]) < 1e-6, key
 
 
 def test_windowed_loss_is_zero_for_perfect_predictions():

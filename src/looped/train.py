@@ -19,7 +19,7 @@ import torch
 from src.common.utils import append_jsonl, markdown_table, pick_device, results_dir, set_seed
 from src.looped.data import make_task
 from src.looped.model import InContextTransformer
-from src.looped.solvers import normalized_squared_error, ols_predict
+from src.looped.solvers import ols_predict
 
 
 # --------------------------------------------------------------------------- #
@@ -89,25 +89,43 @@ def evaluate(
     iterations: List[int],
     batch_size: int = 256,
     device: str = "cpu",
+    chunk_size: int = 64,
 ) -> Dict[str, Dict[str, float]]:
-    """Per-loop-iteration normalised error at the query position, + OLS baseline."""
+    """Per-loop-iteration normalised error at the query position, + OLS baseline.
+
+    The batch is processed in chunks of ``chunk_size`` prompts so that looped
+    evaluation with many iterations (e.g. b=100) does not spike GPU memory.
+    Results are identical to a single large batch (same sampled prompts).
+    """
     model.eval()
+    if device.startswith("cuda"):
+        torch.cuda.empty_cache()
     batch = {key: v.to(device) for key, v in task.sample(batch_size, k).items()}
     n_loops = max(iterations)
-
-    preds = model(batch["x_seq"], batch["y_seq"], n_loops=n_loops, return_all=True)
     y_true = batch["y_true"]
 
-    out: Dict[str, Dict[str, float]] = {}
-    for t in iterations:
-        idx = min(t, len(preds)) - 1
-        pred_q = preds[idx][:, -1, 0]
-        out[str(t)] = {"err": float(normalized_squared_error(pred_q, y_true))}
+    sq_err = {t: 0.0 for t in iterations}
+    ols_sq = 0.0
+    n = 0
+    for start in range(0, batch_size, chunk_size):
+        sl = slice(start, start + chunk_size)
+        preds = model(batch["x_seq"][sl], batch["y_seq"][sl], n_loops=n_loops, return_all=True)
+        y_sub = y_true[sl]
+        for t in iterations:
+            idx = min(t, len(preds)) - 1
+            pred_q = preds[idx][:, -1, 0]
+            sq_err[t] += float(((pred_q - y_sub) ** 2).sum())
+        x_ctx = batch["x_seq"][sl, 0 : 2 * k : 2]
+        y_ctx = batch["label"][sl, 0 : 2 * k : 2]
+        ols = ols_predict(x_ctx, y_ctx, batch["x_query"][sl], ridge=1e-6)
+        ols_sq += float(((ols - y_sub) ** 2).sum())
+        n += int(y_sub.shape[0])
 
-    x_ctx = batch["x_seq"][:, 0 : 2 * k : 2]
-    y_ctx = batch["label"][:, 0 : 2 * k : 2]
-    ols = ols_predict(x_ctx, y_ctx, batch["x_query"], ridge=1e-6)
-    out["ols"] = {"err": float(normalized_squared_error(ols, y_true))}
+    out: Dict[str, Dict[str, float]] = {}
+    y_var = float(y_true.var(unbiased=False)) + 1e-12
+    for t in iterations:
+        out[str(t)] = {"err": sq_err[t] / n / y_var}
+    out["ols"] = {"err": ols_sq / n / y_var}
     model.train()
     return out
 
