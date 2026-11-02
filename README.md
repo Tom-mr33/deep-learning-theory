@@ -53,21 +53,21 @@ python scripts/run_supar_probe.py --steps 200 --d-model 256
 | 项目 | 状态 |
 |------|------|
 | 数据管线（linear / sparse linear / decision tree / 2-layer NN）、前缀一次前向算 k+1 个训练信号 | ✅ 已验证（单批次过拟合 err≈5e-3） |
-| 循环架构 `Y_{t+1}=M(Y_t+P)`、参数共享、有效深度、逐迭代输出 | ✅ 已验证（参数量 <15% 于 12 层） |
-| 窗口截断损失 `[b-T, b]` + b 调度 | ✅ 已实现（`detach_before` 真正截断反传图，测试验证窗口外迭代无梯度） |
+| 循环架构 $Y_{t+1}=M(Y_{t}+P)$、参数共享、有效深度、逐迭代输出 | ✅ 已验证（参数量 <15% 于 12 层） |
+| 窗口截断损失 $[b-T, b]$ + b 调度 | ✅ 已实现（`detach_before` 真正截断反传图，测试验证窗口外迭代无梯度） |
 | **端到端小规模复现**（`configs/looped_linear_smoke.yaml`，30 s）：算法被学到 + 超过 b 后退化 | ✅ 实测 b=3 → 0.067；b=6 → 0.12；b=12 → 0.26；OLS 1.6e-12 |
 | 论文规模数字（Fig.2 / Fig.10 / Table 2） | ⏳ 绝对误差未追上（需 1e5 步，见对比文档）；但 **E1 实测：4k 步内 looped(1/11 参数) 降到 0.74 而 12 层模型纹丝不动(1.00)** —— 论文 Fig.5 样本效率优势的加强版证据 |
 | SµPar 缩放律（init / Adam LR / SGD LR） | ✅ 数值验证：density 从 1 → 1/16，激活方差漂移 <15% |
-| SµPar 激活尺度探针（Fig.5 机制） | ✅ 实测 SP 按 `√ρ` 衰减（0.255→0.062），SµPar 保持 0.25 不变，见 `docs/smupar/supar_probe.png` |
+| SµPar 激活尺度探针（Fig.5 机制） | ✅ 实测 SP 按 $\sqrt{\rho}$ 衰减（0.255→0.062），SµPar 保持 0.25 不变，见 `docs/smupar/supar_probe.png` |
 | SµPar 的 LLM 结论（11.9% loss 改进、HP 迁移） | ⏳ 不做（需要 Cerebras 级算力），只做机制层验证 + 读图笔记 |
 
 诚实说明：本仓库的价值在**可运行的复现骨架 + 可验证的机制检验**，不是刷论文数字。所有未验证的结论在笔记里都标了 "未复现"。
 
-小规模 demo 的一个副产品：`b=3` 训练、推理跑到 12 次循环时误差从 0.067 涨到 0.26 —— 正好复现论文 Fig.4 的"**b 太小就没有稳定不动点**"。
+小规模 demo 的一个副产品：$b=3$ 训练、推理跑到 12 次循环时误差从 0.067 涨到 0.26 —— 正好复现论文 Fig.4 的"**b 太小就没有稳定不动点**"。
 
 ## 环境
 
-- Python 3.14 + PyTorch 2.11（`torch.nn.functional.scaled_dot_product_attention`）
+- Python 3.14 + PyTorch 2.11（``torch.nn.functional.scaled_dot_product_attention``）
 - CPU 可跑通全部管线；论文级实验建议单卡 GPU（8GB 足够跑 d=20/k=40 的设置）
 
 ## Roadmap

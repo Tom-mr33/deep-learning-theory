@@ -13,8 +13,8 @@
 
 传统 ML 解最小二乘有两种路子：
 
-1. 闭式解 `w = (XᵀX)⁻¹Xᵀy` —— 需要矩阵求逆，Transformer 学起来很难（Charton 2021；Giannou et al. 2023 表明求逆需要很多层/头）。
-2. 迭代法 `w_{t+1} = w_t − η·Xᵀ(Xw_t − y)` —— 只需要矩阵乘法，但**要重复很多次**。
+1. 闭式解 $w = (X^{\top}X)^{-1}X^{\top}y$ —— 需要矩阵求逆，Transformer 学起来很难（Charton 2021；Giannou et al. 2023 表明求逆需要很多层/头）。
+2. 迭代法 $w_{t+1} = w_{t} - \eta \cdot X^{\top}(Xw_{t} - y)$ —— 只需要矩阵乘法，但**要重复很多次**。
 
 标准 Transformer 的前向是固定的 L 层，天然不适配"重复"。所以作者问：
 
@@ -25,9 +25,9 @@
 ## 三条贡献
 
 1. **训练方法**：给出让循环 Transformer 学会迭代算法的一整套配方
-   - 架构：`Y_{t+1} = M_θ(Y_t + P)`，`Y_0 = 0`（**输入注入**，而非权重绑定 `Y_{t+1}=M(Y_t)`）
-   - 损失：只在最后 `T` 次循环上算（截断窗口，省显存）
-   - 调度：训练中把 `b` 从 1 线性升到目标值
+   - 架构：$Y_{t+1} = M_\theta(Y_{t} + P)$，$Y_{0} = 0$（**输入注入**，而非权重绑定 $Y_{t+1}=M(Y_{t})$）
+   - 损失：只在最后 $T$ 次循环上算（截断窗口，省显存）
+   - 调度：训练中把 $b$ 从 1 线性升到目标值
 2. **实验证据**：linear / sparse linear / decision tree / 2-layer ReLU NN 四类函数上，looped 匹配甚至超过 12 层标准 Transformer（尤其在稀疏与树任务上）
 3. **诊断**：模型在**超过训练循环数**的迭代上仍收敛到不动点（固定点解），且 probing 显示表示在每次循环中被单调精炼
 
@@ -43,7 +43,7 @@
 | 最优 (b, T) · decision tree | — | (70, 15) |
 | 最优 (b, T) · 2-layer ReLU NN | — | (12, 5) |
 
-任务设置：`d=20`，in-context 样本 `k=40`（sparse / tree / MLP 用 `k=100`），`w ~ N(0, I)`，`x ~ N(0, I)`，评估 1280 个 prompt，bootstrap 1000 次报 90% CI，误差按 Garg 的方式归一化。
+任务设置：$d=20$，in-context 样本 $k=40$（sparse / tree / MLP 用 $k=100$），$w \sim N(0, I)$，$x \sim N(0, I)$，评估 1280 个 prompt，bootstrap 1000 次报 90% CI，误差按 Garg 的方式归一化。
 
 稀疏线性回归上的一次具体对比（40 个 in-context 样本）：
 
@@ -65,7 +65,7 @@ Garg 2022（TF 能 in-context 学函数类）
    └── 本文（标准 decoder-only TF + 循环结构 → 学迭代算法）—— 实验侧，架构贴近实践
 ```
 
-技术祖宗是 **Deep Equilibrium Models / Universal Transformer**：`Y = M(Y+P)` 的不动点就是 DEQ 的平衡点，权重共享 + 输入注入是 Bai et al. (2019) 定理 3 的形式（任意 L 层网络可由权重绑定 + 输入注入的网络表示）。本文的新意不在架构，而在**把它作为 in-context 算法学习的训练配方落地并系统评测**。
+技术祖宗是 **Deep Equilibrium Models / Universal Transformer**：$Y = M(Y+P)$ 的不动点就是 DEQ 的平衡点，权重共享 + 输入注入是 Bai et al. (2019) 定理 3 的形式（任意 L 层网络可由权重绑定 + 输入注入的网络表示）。本文的新意不在架构，而在**把它作为 in-context 算法学习的训练配方落地并系统评测**。
 
 ## 我的第一印象（详细批判见 04）
 
